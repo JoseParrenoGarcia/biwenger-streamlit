@@ -1,0 +1,4 @@
+pandas==2.2.3
+pytest==8.4.0
+toml==0.10.2
+supabase==2.18.1
