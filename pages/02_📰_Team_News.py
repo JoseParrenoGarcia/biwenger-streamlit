@@ -71,7 +71,7 @@ for i in range(10):
         crest_path = os.path.join(CREST_DIR, f"{team}.png")
         data = load_rectangle_png(crest_path, width=100, height=120, transparent_bg=True)
         if data is not None:
-            st.image(data, width=100, use_container_width=True)  # render with fixed width
+            st.image(data, use_container_width=True)  # render with fixed width
         else:
             st.write("🛡️ [Logo missing]")
         if st.button(team, key=f"btn_{team}", use_container_width=True):
@@ -85,7 +85,7 @@ for i in range(10, 20):
         crest_path = os.path.join(CREST_DIR, f"{team}.png")
         data = load_rectangle_png(crest_path, width=100, height=120, transparent_bg=True)
         if data is not None:
-            st.image(data, width=100, use_container_width=True)  # render with fixed width
+            st.image(data, use_container_width=True)  # render with fixed width
         else:
             st.write("🛡️ [Logo missing]")
         if st.button(team, key=f"btn_{team}", use_container_width=True):
