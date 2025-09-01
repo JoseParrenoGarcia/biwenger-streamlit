@@ -100,19 +100,38 @@ if st.session_state.clicked_team:
         with st.container(border=True):
             with st.expander("Lesiones y sanciones..."):
                 lesiones = [r for r in team_rows if r.get("tag") == '["lesiones_sanciones"]']
-                st.write(lesiones[0]['markdown_document'])
+
+                if lesiones:
+                    st.write(lesiones[0]['markdown_document'])
+                else:
+                    st.warning("No lesiones sanciones.")
 
         with st.container(border=True):
             with st.expander("Previa de proximos partidos..."):
-                st.write("Aqui va el detalle de la previa de proximos partidos")
+                previa = [r for r in team_rows if r.get("tag") == '["previa_siguiente_partido"]']
+
+                if previa:
+                    st.write(previa[0]['markdown_document'])
+                else:
+                    st.warning("No previa siguiente partido.")
 
         with st.container(border=True):
             with st.expander("Cronicas de partidos anteriores..."):
-                st.write("Aqui va el detalle de las cronicas de partidos anteriores")
+                cronicas = [r for r in team_rows if r.get("tag") == '["cronica_partido"]']
+
+                if cronicas:
+                    st.write(cronicas[0]['markdown_document'])
+                else:
+                    st.warning("No cronicas de partidos.")
 
         with st.container(border=True):
             with st.expander("Fichajes..."):
-                st.write("Aqui va el detalle de los fichajes")
+                fichajes = [r for r in team_rows if ((r.get("tag") == '["fichajes"]') or (r.get("tag") == '["renovaciones"]'))]
+
+                if fichajes:
+                    st.write(fichajes[0]['markdown_document'])
+                else:
+                    st.warning("No fichajes o renovaciones.")
 
 
 
