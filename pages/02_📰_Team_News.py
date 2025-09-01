@@ -2,9 +2,18 @@ import streamlit as st
 import os
 from io import BytesIO
 from PIL import Image
+from supabase_client.connection import get_supabase_client
+from supabase_client.utils import (
+    check_if_table_exists
+)
 
 # --- Page Setup ---
 st.set_page_config(layout="wide", page_title="News scraper")
+
+# --- Session state initialization ---
+if "clicked_team" not in st.session_state:
+    st.session_state.clicked_team = None
+
 
 # --- Global variables ---
 TEAMS = [
@@ -16,8 +25,13 @@ TEAMS = [
 
 CREST_DIR = "./team_crests"
 
+supabase = get_supabase_client()
+table_name = "article_for_streamlit"
+if not check_if_table_exists(supabase, table_name):
+    st.warning(f"⚠️ Table '{table_name}' does not exist.")
+
 # --- Team selector top of page ---
-clicked_team = None
+# clicked_team = None
 
 @st.cache_data
 def load_rectangle_png(path: str, width: int = 100, height: int = 120, transparent_bg: bool = True) -> bytes | None:
@@ -41,6 +55,14 @@ def load_rectangle_png(path: str, width: int = 100, height: int = 120, transpare
     canvas.save(buf, format="PNG")
     return buf.getvalue()
 
+
+@st.cache_data
+def load_all_news_articles() -> dict:
+    result = supabase.table(table_name).select("*").execute()
+    if result and result.data:
+        return result.data
+    return {}
+
 # First row (10 teams)
 cols = st.columns(10)
 for i in range(10):
@@ -53,7 +75,7 @@ for i in range(10):
         else:
             st.write("🛡️ [Logo missing]")
         if st.button(team, key=f"btn_{team}", use_container_width=True):
-            clicked = team
+            st.session_state.clicked_team = team
 
 # Second row (next 10 teams)
 cols = st.columns(10)
@@ -67,8 +89,62 @@ for i in range(10, 20):
         else:
             st.write("🛡️ [Logo missing]")
         if st.button(team, key=f"btn_{team}", use_container_width=True):
-            clicked = team
+            st.session_state.clicked_team = team
 
-if clicked_team:
-    st.success(f"You clicked: {clicked_team}")
+if st.session_state.clicked_team:
+    with st.container(border=True):
+        result = load_all_news_articles()
+        team_rows = [r for r in result if r.get("team") == st.session_state.clicked_team]
+        st.success(f"Has elegido: {st.session_state.clicked_team}. Encontrados {len(team_rows)} resumenes.")
+
+        # cols = st.columns(2)
+        #
+        # with cols[0]:
+        #     with st.container(border=True):
+        #         st.markdown("### Lesiones y sanciones")
+        #         with st.expander("Ver mas..."):
+        #             st.write("Aqui va el detalle de las lesiones y sanciones")
+        #
+        #     with st.container(border=True):
+        #         st.markdown("### Cronicas de partidos anteriores")
+        #         with st.expander("Ver mas..."):
+        #             st.write("Aqui va el detalle de las cronicas de partidos anteriores")
+        #
+        # with cols[1]:
+        #     with st.container(border=True):
+        #         st.markdown("### Fichajes")
+        #         with st.expander("Ver mas..."):
+        #             st.write("Aqui va el detalle de los fichajes")
+        #
+        #     with st.container(border=True):
+        #         st.markdown("### Previa de proximos partidos")
+        #         with st.expander("Ver mas..."):
+        #             st.write("Aqui va el detalle de la previa de proximos partidos")
+
+        with st.container(border=True):
+            st.markdown("### Lesiones y sanciones")
+            with st.expander("Ver mas..."):
+                st.write("Aqui va el detalle de las lesiones y sanciones")
+
+        with st.container(border=True):
+            st.markdown("### Cronicas de partidos anteriores")
+            with st.expander("Ver mas..."):
+                st.write("Aqui va el detalle de las cronicas de partidos anteriores")
+
+        with st.container(border=True):
+            st.markdown("### Fichajes")
+            with st.expander("Ver mas..."):
+                st.write("Aqui va el detalle de los fichajes")
+
+        with st.container(border=True):
+            st.markdown("### Previa de proximos partidos")
+            with st.expander("Ver mas..."):
+                st.write("Aqui va el detalle de la previa de proximos partidos")
+
+        # team_news = [article for article in result if article.get("team") == clicked_team]
+        # st.write(team_news)
+        st.write(result[0])
+
+
+
 
