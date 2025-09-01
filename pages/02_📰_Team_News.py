@@ -97,53 +97,22 @@ if st.session_state.clicked_team:
         team_rows = [r for r in result if r.get("team") == st.session_state.clicked_team]
         st.success(f"Has elegido: {st.session_state.clicked_team}. Encontrados {len(team_rows)} resumenes.")
 
-        # cols = st.columns(2)
-        #
-        # with cols[0]:
-        #     with st.container(border=True):
-        #         st.markdown("### Lesiones y sanciones")
-        #         with st.expander("Ver mas..."):
-        #             st.write("Aqui va el detalle de las lesiones y sanciones")
-        #
-        #     with st.container(border=True):
-        #         st.markdown("### Cronicas de partidos anteriores")
-        #         with st.expander("Ver mas..."):
-        #             st.write("Aqui va el detalle de las cronicas de partidos anteriores")
-        #
-        # with cols[1]:
-        #     with st.container(border=True):
-        #         st.markdown("### Fichajes")
-        #         with st.expander("Ver mas..."):
-        #             st.write("Aqui va el detalle de los fichajes")
-        #
-        #     with st.container(border=True):
-        #         st.markdown("### Previa de proximos partidos")
-        #         with st.expander("Ver mas..."):
-        #             st.write("Aqui va el detalle de la previa de proximos partidos")
+        with st.container(border=True):
+            with st.expander("Lesiones y sanciones..."):
+                lesiones = [r for r in team_rows if r.get("tag") == '["lesiones_sanciones"]']
+                st.write(lesiones[0]['markdown_document'])
 
         with st.container(border=True):
-            st.markdown("### Lesiones y sanciones")
-            with st.expander("Ver mas..."):
-                st.write("Aqui va el detalle de las lesiones y sanciones")
+            with st.expander("Previa de proximos partidos..."):
+                st.write("Aqui va el detalle de la previa de proximos partidos")
 
         with st.container(border=True):
-            st.markdown("### Cronicas de partidos anteriores")
-            with st.expander("Ver mas..."):
+            with st.expander("Cronicas de partidos anteriores..."):
                 st.write("Aqui va el detalle de las cronicas de partidos anteriores")
 
         with st.container(border=True):
-            st.markdown("### Fichajes")
-            with st.expander("Ver mas..."):
+            with st.expander("Fichajes..."):
                 st.write("Aqui va el detalle de los fichajes")
-
-        with st.container(border=True):
-            st.markdown("### Previa de proximos partidos")
-            with st.expander("Ver mas..."):
-                st.write("Aqui va el detalle de la previa de proximos partidos")
-
-        # team_news = [article for article in result if article.get("team") == clicked_team]
-        # st.write(team_news)
-        st.write(result[0])
 
 
 
