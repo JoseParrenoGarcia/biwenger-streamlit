@@ -20,9 +20,21 @@ if not check_if_table_exists(supabase, player_stats_table_name):
 def load_player_stats() -> pd.DataFrame:
     result = supabase.table(player_stats_table_name).select("*").execute()
     if result and result.data:
+        # Remove unwanted keys from each record
+        filtered_data = [
+            {k: v for k, v in record.items() if k not in ['id', 'created_at']}
+            for record in result.data
+        ]
         return (
-            pd.DataFrame(load_player_stats())
-            .assign(points_per_value=lambda df: df['points'] / df['value'].replace(0, pd.NA))
+            pd.DataFrame(filtered_data)
+            .assign(points_per_value=lambda df: df['points'] / df['value'].replace(0, pd.NA),
+                    position=lambda df: df['position'].map({
+                        'Defender': '2 - Defensa',
+                        'Forward': '4 - Delantero',
+                        'Goalkeeper': '1 - Portero',
+                        'Midfielder': '3 - Centrocampista'
+                    })
+                    )
         )
     return pd.DataFrame()
 
@@ -37,46 +49,46 @@ unique_season = sorted(player_stats_pd['season'].dropna().unique().tolist(), rev
 st.title("Explora las estadisticas de los jugadores de Biwenger")
 
 # --- Filters ---
-cols = st.columns(4)
-season = cols[0].multiselect(
-    "Temporada",
-    options=unique_season,
-    default=unique_season[0]
-)
-
-position = cols[1].multiselect(
-    "Posicion",
-    options=unique_position,
-)
-
-team = cols[2].multiselect(
-    "Equipo",
-    options=unique_teams,
-)
-
-highlight_players = cols[3].multiselect(
-    "Destacar jugadores",
-    options=unique_players,
-)
-
-# --- Chart layout cols ---
-metric_cols = [['points', 'value', 'matches_played', 'average']]
-x_metric = cols[0].selectbox("X-axis", metric_cols, index=0)
-y_metric = cols[1].selectbox("Y-axis", metric_cols, index=1)
-
-# --- Filter data based on selection ---
-if season:
-    player_stats_pd = player_stats_pd[player_stats_pd['season'].isin(season)]
-if position:
-    player_stats_pd = player_stats_pd[player_stats_pd['position'].isin(position)]
-if team:
-    player_stats_pd = player_stats_pd[player_stats_pd['team'].isin(team)]
-
-# Calculate tertiles for X and Y axes
-x_tertiles = [player_stats_pd[x_metric].quantile(q) for q in [0.33, 0.67]]
-y_tertiles = [player_stats_pd[y_metric].quantile(q) for q in [0.33, 0.67]]
-
-# --- Visualise ---
 with st.container(border=True):
+    cols = st.columns(4)
+    season = cols[0].multiselect(
+        "Temporada",
+        options=unique_season,
+        default=unique_season[0]
+    )
+
+    position = cols[1].multiselect(
+        "Posicion",
+        options=unique_position,
+    )
+
+    team = cols[2].multiselect(
+        "Equipo",
+        options=unique_teams,
+    )
+
+    highlight_players = cols[3].multiselect(
+        "Destacar jugadores",
+        options=unique_players,
+    )
+
+    # --- Chart layout cols ---
+    metric_cols = ['points', 'value', 'matches_played', 'average']
+    x_metric = cols[0].selectbox("X-axis", metric_cols, index=0)
+    y_metric = cols[1].selectbox("Y-axis", metric_cols, index=1)
+
+    # --- Filter data based on selection ---
+    if season:
+        player_stats_pd = player_stats_pd[player_stats_pd['season'].isin(season)]
+    if position:
+        player_stats_pd = player_stats_pd[player_stats_pd['position'].isin(position)]
+    if team:
+        player_stats_pd = player_stats_pd[player_stats_pd['team'].isin(team)]
+
+    # Calculate tertiles for X and Y axes
+    x_tertiles = [player_stats_pd[x_metric].quantile(q) for q in [0.33, 0.67]]
+    y_tertiles = [player_stats_pd[y_metric].quantile(q) for q in [0.33, 0.67]]
+
+    # --- Visualise ---
     st.subheader("Estadisticas a vista de grafica")
 
