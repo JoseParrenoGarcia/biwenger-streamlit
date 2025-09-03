@@ -325,6 +325,24 @@ with st.container(border=True):
 
         st.plotly_chart(fig, use_container_width=False)
 
+    st.subheader("Mercado")
+    with st.container(border=True):
+        st.write('**Compras vs Ventas**')
+        x_metric = 'market_purchases_pct'
+        y_metric = 'market_sales_pct'
 
+        fig = render_player_scatter(
+            player_stats_pd,
+            x_metric=x_metric,
+            y_metric=y_metric,
+            position_col="position",
+            player_name_col="player_name",
+            current_team_players=current_team_players,
+            extra_highlight_players=highlight_players,
+            position_colors=position_colors,
+            show_tertiles=True,
+            height=chart_height,
+        )
 
+        st.plotly_chart(fig, use_container_width=False)
 
