@@ -4,6 +4,7 @@ from supabase_client.utils import (
     check_if_table_exists
 )
 import pandas as pd
+import plotly.express as px
 
 # --- Page Setup ---
 st.set_page_config(layout="wide", page_title="News scraper")
@@ -72,11 +73,6 @@ with st.container(border=True):
         options=unique_players,
     )
 
-    # --- Chart layout cols ---
-    metric_cols = ['points', 'value', 'matches_played', 'average']
-    x_metric = cols[0].selectbox("X-axis", metric_cols, index=0)
-    y_metric = cols[1].selectbox("Y-axis", metric_cols, index=1)
-
     # --- Filter data based on selection ---
     if season:
         player_stats_pd = player_stats_pd[player_stats_pd['season'].isin(season)]
@@ -85,10 +81,40 @@ with st.container(border=True):
     if team:
         player_stats_pd = player_stats_pd[player_stats_pd['team'].isin(team)]
 
+
+
+    # --- Visualise ---
+    st.subheader("Estadisticas a vista de grafica")
+    metric_cols = ['points', 'value', 'matches_played', 'average']
+    x_metric = cols[0].selectbox("X-axis", metric_cols, index=0)
+    y_metric = cols[1].selectbox("Y-axis", metric_cols, index=1)
+
+    # Create scatter plot
+    position_colors = {
+        "1 - Portero": "rgb(253, 216, 53)",
+        "2 - Defensa": "rgb(30, 136, 229)",
+        "3 - Centrocampista": "rgb(67, 160, 71)",
+        "4 - Delantero": "rgb(244, 81, 30)"
+    }
+
+    fig = px.scatter(
+        player_stats_pd,
+        x=x_metric,
+        y=y_metric,
+        color="position",  # Color by position
+        color_discrete_map=position_colors,  # Map positions to colors
+        hover_name="name" if "name" in player_stats_pd.columns else None,
+        hover_data={
+            x_metric: True,
+            y_metric: True,
+            "position": False,
+        },
+        height=600
+    )
+
     # Calculate tertiles for X and Y axes
     x_tertiles = [player_stats_pd[x_metric].quantile(q) for q in [0.33, 0.67]]
     y_tertiles = [player_stats_pd[y_metric].quantile(q) for q in [0.33, 0.67]]
 
-    # --- Visualise ---
-    st.subheader("Estadisticas a vista de grafica")
+
 
