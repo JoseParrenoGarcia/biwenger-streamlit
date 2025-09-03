@@ -5,6 +5,7 @@ from supabase_client.utils import (
 )
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 
 # --- Page Setup ---
 st.set_page_config(layout="wide", page_title="News scraper")
@@ -14,6 +15,10 @@ st.set_page_config(layout="wide", page_title="News scraper")
 # --- Global variables ---
 supabase = get_supabase_client()
 player_stats_table_name = "biwenger_player_stats"
+if not check_if_table_exists(supabase, player_stats_table_name):
+    st.warning(f"⚠️ Table '{player_stats_table_name}' does not exist.")
+
+current_team_table_name = "biwenger_current_team"
 if not check_if_table_exists(supabase, player_stats_table_name):
     st.warning(f"⚠️ Table '{player_stats_table_name}' does not exist.")
 
@@ -38,13 +43,26 @@ def load_player_stats() -> pd.DataFrame:
                     )
         )
     return pd.DataFrame()
-
 player_stats_pd = load_player_stats()
+
+@st.cache_data
+def load_current_team_players() ->  pd.DataFrame:
+    result = supabase.table(current_team_table_name).select("*").execute()
+    if result and result.data:
+        # Remove unwanted keys from each record
+        filtered_data = [
+            {k: v for k, v in record.items() if k not in ['id', 'created_at']}
+            for record in result.data
+        ]
+        return pd.DataFrame(filtered_data)
+    return pd.DataFrame()
+current_team_pd = load_current_team_players()
 
 unique_teams = sorted(player_stats_pd['team'].dropna().unique().tolist())
 unique_position = sorted(player_stats_pd['position'].dropna().unique().tolist())
 unique_players = sorted(player_stats_pd['player_name'].dropna().unique().tolist())
 unique_season = sorted(player_stats_pd['season'].dropna().unique().tolist(), reverse=True)
+current_team_players = sorted(current_team_pd['name'].dropna().unique().tolist())
 
 # --- Main page ---
 st.title("Explora las estadisticas de los jugadores de Biwenger")
@@ -81,13 +99,13 @@ with st.container(border=True):
     if team:
         player_stats_pd = player_stats_pd[player_stats_pd['team'].isin(team)]
 
-
-
     # --- Visualise ---
     st.subheader("Estadisticas a vista de grafica")
-    metric_cols = ['points', 'value', 'matches_played', 'average']
-    x_metric = cols[0].selectbox("X-axis", metric_cols, index=0)
-    y_metric = cols[1].selectbox("Y-axis", metric_cols, index=1)
+    # st.write(player_stats_pd.head())
+    metric_cols = st.columns([1, 1, 6])
+    metric_features = ['points', 'value', 'matches_played', 'average']
+    x_metric = metric_cols[0].selectbox("X-axis", metric_features, index=0)
+    y_metric = metric_cols[1].selectbox("Y-axis", metric_features, index=1)
 
     # Create scatter plot
     position_colors = {
@@ -103,7 +121,7 @@ with st.container(border=True):
         y=y_metric,
         color="position",  # Color by position
         color_discrete_map=position_colors,  # Map positions to colors
-        hover_name="name" if "name" in player_stats_pd.columns else None,
+        hover_name="player_name" if "player_name" in player_stats_pd.columns else None,
         hover_data={
             x_metric: True,
             y_metric: True,
@@ -112,9 +130,63 @@ with st.container(border=True):
         height=600
     )
 
+    def _highlight_players(fig, df, players_to_highlight, x_metric, y_metric, color, line_color):
+        """
+        Highlights specified players on the scatter plot with a given color.
+
+        Args:
+            fig: The plotly figure to add the highlighted players to.
+            df: The DataFrame containing player data.
+            players_to_highlight: A list of player names to highlight.
+            x_metric: The column name for the x-axis.
+            y_metric: The column name for the y-axis.
+            color: The color of the highlighted markers.
+            line_color: The color of the highlighted marker borders.
+        """
+        highlighted_df = df[df['player_name'].isin(players_to_highlight)]
+
+        fig.add_trace(
+            go.Scatter(
+                x=highlighted_df[x_metric],
+                y=highlighted_df[y_metric],
+                mode='markers',
+                marker=dict(
+                    color=color,
+                    line=dict(width=2, color=line_color),
+                    size=10,
+                ),
+                text=[f"<b>{name}</b><br><br>{x_metric}: {x_val}<br>{y_metric}: {y_val}"
+                      for name, x_val, y_val in zip(
+                        highlighted_df['player_name'],
+                        highlighted_df[x_metric],
+                        highlighted_df[y_metric]
+                    )],
+                hoverinfo='text',
+                showlegend=False
+            )
+        )
+
+
+    _highlight_players(fig, player_stats_pd, current_team_players, x_metric, y_metric, 'rgb(125, 60, 152)', 'rgb(187, 143, 206)')
+
+    if highlight_players:
+        _highlight_players(fig, player_stats_pd, highlight_players, x_metric, y_metric, 'black', 'grey')
+
+
     # Calculate tertiles for X and Y axes
     x_tertiles = [player_stats_pd[x_metric].quantile(q) for q in [0.33, 0.67]]
     y_tertiles = [player_stats_pd[y_metric].quantile(q) for q in [0.33, 0.67]]
+
+    # Add vertical tertile lines (X-axis)
+    colour = "rgb(248, 196, 113)"
+    for x_val in x_tertiles:
+        fig.add_vline(x=x_val, line_dash="dash", line_color=colour)
+
+    # Add horizontal tertile lines (Y-axis)
+    for y_val in y_tertiles:
+        fig.add_hline(y=y_val, line_dash="dash", line_color=colour)
+
+    st.plotly_chart(fig, use_container_width=True)
 
 
 
