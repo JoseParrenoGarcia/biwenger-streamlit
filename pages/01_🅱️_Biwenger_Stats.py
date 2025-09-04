@@ -1,63 +1,20 @@
 import streamlit as st
-from supabase_client.connection import get_supabase_client
-from supabase_client.utils import (
-    check_if_table_exists
-)
 import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from utils import (
+    load_player_stats,
+    load_current_team_players
+)
 
 # --- Page Setup ---
-st.set_page_config(layout="wide", page_title="News scraper")
+st.set_page_config(layout="wide", page_title="Estadisticas de jugadores de Biwenger")
 
 # --- Session state initialization ---
 
 # --- Global variables ---
-supabase = get_supabase_client()
-player_stats_table_name = "biwenger_player_stats"
-if not check_if_table_exists(supabase, player_stats_table_name):
-    st.warning(f"⚠️ Table '{player_stats_table_name}' does not exist.")
-
-current_team_table_name = "biwenger_current_team"
-if not check_if_table_exists(supabase, current_team_table_name):
-    st.warning(f"⚠️ Table '{current_team_table_name}' does not exist.")
-
-@st.cache_data
-def load_player_stats() -> pd.DataFrame:
-    result = supabase.table(player_stats_table_name).select("*").execute()
-    if result and result.data:
-        # Remove unwanted keys from each record
-        filtered_data = [
-            {k: v for k, v in record.items() if k not in ['id', 'created_at']}
-            for record in result.data
-        ]
-        return (
-            pd.DataFrame(filtered_data)
-            .assign(points_per_value=lambda df: np.round(np.maximum(0, df['points'] / df['value'].replace(0, pd.NA))*100_000, 2),
-                    ratio_purchase_sales=lambda df: np.round(np.maximum(0, df['market_purchases_pct'] / df['market_sales_pct']).replace(0, pd.NA), 2),
-                    position=lambda df: df['position'].map({
-                        'Defender': '2 - Defensa',
-                        'Forward': '4 - Delantero',
-                        'Goalkeeper': '1 - Portero',
-                        'Midfielder': '3 - Centrocampista'
-                    })
-                    )
-        )
-    return pd.DataFrame()
 player_stats_pd = load_player_stats()
-
-@st.cache_data
-def load_current_team_players() ->  pd.DataFrame:
-    result = supabase.table(current_team_table_name).select("*").execute()
-    if result and result.data:
-        # Remove unwanted keys from each record
-        filtered_data = [
-            {k: v for k, v in record.items() if k not in ['id', 'created_at']}
-            for record in result.data
-        ]
-        return pd.DataFrame(filtered_data)
-    return pd.DataFrame()
 current_team_pd = load_current_team_players()
 
 unique_teams = sorted(player_stats_pd['team'].dropna().unique().tolist())
