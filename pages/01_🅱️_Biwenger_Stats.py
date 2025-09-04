@@ -7,6 +7,7 @@ from utils import (
     load_player_stats,
     load_current_team_players
 )
+import re
 
 # --- Page Setup ---
 st.set_page_config(layout="wide", page_title="Estadisticas de jugadores de Biwenger")
@@ -192,21 +193,23 @@ with st.container(border=True):
         player_stats_pd = player_stats_pd[player_stats_pd['team'].isin(team)]
 
     # --- Visualise ---
-    st.subheader("Estadísticas a vista de gráfica")
-
-    position_colors = {
-        "1 - Portero": "rgb(253, 216, 53)",
-        "2 - Defensa": "rgb(30, 136, 229)",
-        "3 - Centrocampista": "rgb(67, 160, 71)",
-        "4 - Delantero": "rgb(244, 81, 30)"
-    }
-
-    chart_height = 450
-
     with st.container(border=True):
-        st.write('**Puntos vs Partidos jugados**')
-        x_metric = 'points'
-        y_metric = 'matches_played'
+        position_colors = {
+            "1 - Portero": "rgb(253, 216, 53)",
+            "2 - Defensa": "rgb(30, 136, 229)",
+            "3 - Centrocampista": "rgb(67, 160, 71)",
+            "4 - Delantero": "rgb(244, 81, 30)"
+        }
+
+        chart_height = 450
+
+        st.subheader("Estadísticas a vista de gráfica")
+        st.write("###### Escoge las métricas a comparar:")
+
+        chart_cols = st.columns([1, 1, 4])
+        chart_metrics = ['points', 'value', 'matches_played', 'average', 'points_per_value']
+        x_metric = chart_cols[0].selectbox("X-axis", chart_metrics, index=0)
+        y_metric = chart_cols[1].selectbox("Y-axis", chart_metrics, index=1)
 
         fig = render_player_scatter(
             player_stats_pd,
@@ -221,12 +224,33 @@ with st.container(border=True):
             height=chart_height,
         )
 
-        st.plotly_chart(fig, use_container_width=False)
+        st.plotly_chart(fig, use_container_width=False, key="main_chart")
 
     with st.container(border=True):
-        st.write('**Puntos vs Media por partido**')
-        x_metric = 'points'
-        y_metric = 'average'
+        st.subheader("Simula el valor por puntos segun tu coste esperado")
+        st.write("###### Si vas a fichar a un jugador, ¿cuanto te costaria por punto?")
+
+        jugador_a_simular = st.selectbox("Jugador a simular", options=unique_players)
+        jugador_a_simular_text = jugador_a_simular + ' (Simulado)'
+
+        coste_de_jugador = re.sub(r"[^\d]", "", st.text_input("Coste del jugador (€)", value="€2,500,000"))
+        coste_de_jugador = int(coste_de_jugador) if coste_de_jugador else 0
+
+        player_stats_pd_simulation = (
+            player_stats_pd.copy()
+            .query("player_name == @jugador_a_simular or player_name not in @unique_players")
+            .assign(value = coste_de_jugador,
+                    points_per_value = lambda df: np.round(np.maximum(0, df['points'] / df['value'].replace(0, pd.NA))*100_000, 2),
+                    player_name = jugador_a_simular_text,
+                    )
+        )
+
+        player_stats_pd = pd.concat([player_stats_pd_simulation, player_stats_pd])
+        # st.write(player_stats_pd)
+
+        chart_cols_2 = st.columns([1, 1, 4])
+        x_metric = chart_cols_2[0].selectbox("X-axis ", chart_metrics, index=0)
+        y_metric = chart_cols_2[1].selectbox("Y-axis ", chart_metrics, index=1)
 
         fig = render_player_scatter(
             player_stats_pd,
@@ -235,92 +259,12 @@ with st.container(border=True):
             position_col="position",
             player_name_col="player_name",
             current_team_players=current_team_players,
-            extra_highlight_players=highlight_players,
+            extra_highlight_players=[jugador_a_simular, jugador_a_simular_text],
             position_colors=position_colors,
             show_tertiles=True,
             height=chart_height,
         )
 
-        st.plotly_chart(fig, use_container_width=False)
+        st.plotly_chart(fig, use_container_width=False, key="simulation_chart")
 
-    with st.container(border=True):
-        st.write('**Puntos vs Valor total**')
-        x_metric = 'points'
-        y_metric = 'value'
-
-        fig = render_player_scatter(
-            player_stats_pd,
-            x_metric=x_metric,
-            y_metric=y_metric,
-            position_col="position",
-            player_name_col="player_name",
-            current_team_players=current_team_players,
-            extra_highlight_players=highlight_players,
-            position_colors=position_colors,
-            show_tertiles=True,
-            height=chart_height,
-        )
-
-        st.plotly_chart(fig, use_container_width=False)
-
-    with st.container(border=True):
-        st.write('**Puntos vs Puntos por valor**')
-        x_metric = 'points'
-        y_metric = 'points_per_value'
-
-        fig = render_player_scatter(
-            player_stats_pd,
-            x_metric=x_metric,
-            y_metric=y_metric,
-            position_col="position",
-            player_name_col="player_name",
-            current_team_players=current_team_players,
-            extra_highlight_players=highlight_players,
-            position_colors=position_colors,
-            show_tertiles=True,
-            height=chart_height,
-        )
-
-        st.plotly_chart(fig, use_container_width=False)
-
-    st.subheader("Mercado")
-    with st.container(border=True):
-        st.write('**Compras vs Ventas**')
-        x_metric = 'market_purchases_pct'
-        y_metric = 'market_sales_pct'
-
-        fig = render_player_scatter(
-            player_stats_pd,
-            x_metric=x_metric,
-            y_metric=y_metric,
-            position_col="position",
-            player_name_col="player_name",
-            current_team_players=current_team_players,
-            extra_highlight_players=highlight_players,
-            position_colors=position_colors,
-            show_tertiles=True,
-            height=chart_height,
-        )
-
-        st.plotly_chart(fig, use_container_width=False)
-
-    with st.container(border=True):
-        st.write('**Ratio Compras/Ventas vs Valor total**')
-        x_metric = 'ratio_purchase_sales'
-        y_metric = 'value'
-
-        fig = render_player_scatter(
-            player_stats_pd,
-            x_metric=x_metric,
-            y_metric=y_metric,
-            position_col="position",
-            player_name_col="player_name",
-            current_team_players=current_team_players,
-            extra_highlight_players=highlight_players,
-            position_colors=position_colors,
-            show_tertiles=True,
-            height=chart_height,
-        )
-
-        st.plotly_chart(fig, use_container_width=False)
 

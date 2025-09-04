@@ -56,9 +56,9 @@ def load_current_team_players() ->  pd.DataFrame:
     return pd.DataFrame()
 
 @st.cache_data
-@st.cache_data
 def load_market_value() -> pd.DataFrame:
-    result = supabase.table(player_value_table_name).select("*").execute()
+    result = supabase.table(player_value_table_name).select("*").limit(5_000).execute()
+
     if result and result.data:
         # Remove unwanted keys from each record
         filtered_data = [
