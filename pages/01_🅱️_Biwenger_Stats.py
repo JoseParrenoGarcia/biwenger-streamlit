@@ -34,7 +34,8 @@ def load_player_stats() -> pd.DataFrame:
         ]
         return (
             pd.DataFrame(filtered_data)
-            .assign(points_per_value=lambda df: np.maximum(0, df['points'] / df['value'].replace(0, pd.NA)),
+            .assign(points_per_value=lambda df: np.round(np.maximum(0, df['points'] / df['value'].replace(0, pd.NA))*100_000, 2),
+                    ratio_purchase_sales=lambda df: np.round(np.maximum(0, df['market_purchases_pct'] / df['market_sales_pct']).replace(0, pd.NA), 2),
                     position=lambda df: df['position'].map({
                         'Defender': '2 - Defensa',
                         'Forward': '4 - Delantero',
@@ -114,8 +115,8 @@ def render_player_scatter(
 
     # Ensure numeric (avoid plotly choking on strings)
     df_plot = df.copy()
-    df_plot[x_metric] = pd.to_numeric(df_plot[x_metric], errors="coerce")
-    df_plot[y_metric] = pd.to_numeric(df_plot[y_metric], errors="coerce")
+    df_plot[x_metric] = np.round(pd.to_numeric(df_plot[x_metric], errors="coerce"),2)
+    df_plot[y_metric] = np.round(pd.to_numeric(df_plot[y_metric], errors="coerce"), 2)
     df_plot = df_plot.dropna(subset=[x_metric, y_metric])
 
     # Default colors if none provided
@@ -330,6 +331,26 @@ with st.container(border=True):
         st.write('**Compras vs Ventas**')
         x_metric = 'market_purchases_pct'
         y_metric = 'market_sales_pct'
+
+        fig = render_player_scatter(
+            player_stats_pd,
+            x_metric=x_metric,
+            y_metric=y_metric,
+            position_col="position",
+            player_name_col="player_name",
+            current_team_players=current_team_players,
+            extra_highlight_players=highlight_players,
+            position_colors=position_colors,
+            show_tertiles=True,
+            height=chart_height,
+        )
+
+        st.plotly_chart(fig, use_container_width=False)
+
+    with st.container(border=True):
+        st.write('**Ratio Compras/Ventas vs Valor total**')
+        x_metric = 'ratio_purchase_sales'
+        y_metric = 'value'
 
         fig = render_player_scatter(
             player_stats_pd,
