@@ -8,7 +8,11 @@ from utils import (
     load_current_team_players,
     load_market_value
 )
-from utils_plotting import render_player_scatter, POSITION_COLOURS
+from utils_plotting import (
+    render_player_scatter,
+    POSITION_COLOURS,
+    render_value_timeseries
+)
 from utils_layouts import filter_layouts
 
 # --- Page Setup ---
@@ -17,7 +21,6 @@ st.set_page_config(layout="wide", page_title="Analisis de Mercado")
 # --- Global variables ---
 player_stats_pd = load_player_stats()
 current_team_pd = load_current_team_players()
-market_value_pd = load_market_value()
 
 unique_teams = sorted(player_stats_pd['team'].dropna().unique().tolist())
 unique_position = sorted(player_stats_pd['position'].dropna().unique().tolist())
@@ -54,8 +57,8 @@ with st.container(border=True):
 
         chart_cols = st.columns([1, 1, 4])
         chart_metrics = ['market_purchases_pct', 'market_sales_pct', 'market_usage_pct', 'ratio_purchase_sales', 'value']
-        x_metric = chart_cols[0].selectbox("X-axis", chart_metrics, index=len(chart_metrics)-1)
-        y_metric = chart_cols[1].selectbox("Y-axis", chart_metrics, index=len(chart_metrics)-2)
+        x_metric = chart_cols[0].selectbox("X-axis", chart_metrics, index=0)
+        y_metric = chart_cols[1].selectbox("Y-axis", chart_metrics, index=1)
 
         fig = render_player_scatter(
             player_stats_pd,
@@ -72,6 +75,42 @@ with st.container(border=True):
 
         st.plotly_chart(fig, use_container_width=False, key="main_chart")
 
-# st.dataframe(player_stats_pd.head())
-# st.write(market_value_pd.shape)
-# st.write(market_value_pd)
+
+with st.container(border=True):
+    st.subheader("Evolucion del valor de mercado")
+    st.write("###### Escoge jugadores a analizar")
+
+    timeseries_filter_cols = st.columns([1, 2])
+
+    with timeseries_filter_cols[0]:
+        selected_players = st.multiselect(
+            "Selecciona jugadores",
+            options=unique_players,
+        )
+
+    market_value_pd = load_market_value(player_names=selected_players)
+
+    if selected_players:
+        fig_ts = render_value_timeseries(
+            df=market_value_pd,
+            title='Evolución del valor de mercado',
+            date_col="date",
+            value_col="market_value_eur",
+            player_col="player_name",
+            height=420,
+        )
+        st.plotly_chart(fig_ts, use_container_width=True)
+
+        fig_ts = render_value_timeseries(
+            df=market_value_pd,
+            title='Evolución del cambio diario del valor de mercado',
+            date_col="date",
+            value_col="value_change_7d_pct",
+            player_col="player_name",
+            height=420,
+        )
+        st.plotly_chart(fig_ts, use_container_width=True)
+    else:
+        st.warning("No jugadores seleccionados")
+
+    st.dataframe(market_value_pd.head())

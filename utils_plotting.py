@@ -140,3 +140,60 @@ def render_player_scatter(
         margin=dict(l=10, r=10, t=10, b=10),
     )
     return fig
+
+def render_value_timeseries(
+    df: pd.DataFrame,
+    *,
+    title: str = "Evolución del valor de mercado",
+    date_col: str = "date",
+    value_col: str = "value",
+    player_col: str = "player_name",
+    players: list[str] | None = None,
+    height: int = 420,
+) -> go.Figure:
+    """
+    Minimal time-series: one line per player for 'value' over time.
+    """
+    # Basic validation
+    missing = [c for c in [date_col, value_col, player_col] if c not in df.columns]
+    if missing:
+        raise ValueError(f"Missing columns in DataFrame: {missing}")
+
+    if df.empty:
+        fig = go.Figure()
+        fig.add_annotation(
+            text="No time-series data available",
+            x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False
+        )
+        fig.update_layout(height=height, margin=dict(l=20, r=20, t=20, b=20))
+        return fig
+
+    d = df.copy()
+    d[date_col] = pd.to_datetime(d[date_col], errors="coerce")
+    d[value_col] = pd.to_numeric(d[value_col], errors="coerce")
+    d = d.dropna(subset=[date_col, value_col])
+
+    if players:
+        d = d[d[player_col].isin(players)]
+
+    d = d.sort_values([player_col, date_col])
+
+    fig = px.line(
+        d,
+        x=date_col,
+        y=value_col,
+        color=player_col,
+        height=height,
+    )
+
+    fig.update_traces(
+        connectgaps=True,
+        hovertemplate="<b>%{fullData.name}</b><br>Fecha: %{x}<br>Valor: %{y}<extra></extra>"
+    )
+    fig.update_layout(
+        title=title + ": " + value_col,
+        xaxis_title="Fecha",
+        yaxis_title="Valor",
+        legend_title_text="Jugador",
+    )
+    return fig
