@@ -150,6 +150,7 @@ def render_value_timeseries(
     player_col: str = "player_name",
     players: list[str] | None = None,
     height: int = 420,
+    days_back: int = 365,
 ) -> go.Figure:
     """
     Minimal time-series: one line per player for 'value' over time.
@@ -178,13 +179,21 @@ def render_value_timeseries(
 
     d = d.sort_values([player_col, date_col])
 
+    if days_back == 365:
+        markers = False
+    else:
+        markers = True
+
     fig = px.line(
         d,
         x=date_col,
         y=value_col,
         color=player_col,
         height=height,
+        markers=markers,
     )
+
+    fig.add_hline(y=0, line_dash="dot", line_color="grey")
 
     fig.update_traces(
         connectgaps=True,
@@ -196,4 +205,5 @@ def render_value_timeseries(
         yaxis_title="Valor",
         legend_title_text="Jugador",
     )
+
     return fig
