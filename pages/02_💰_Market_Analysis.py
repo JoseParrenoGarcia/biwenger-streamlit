@@ -1,21 +1,22 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
 from utils import (
     load_player_stats,
-    load_current_team_players
+    load_current_team_players,
+    load_market_value
 )
 from utils_plotting import (
     render_player_scatter,
-    POSITION_COLOURS
+    POSITION_COLOURS,
+    render_value_timeseries
 )
 from utils_layouts import filter_layouts
-import re
 
 # --- Page Setup ---
-st.set_page_config(layout="wide", page_title="Estadisticas de jugadores de Biwenger")
-
-# --- Session state initialization ---
+st.set_page_config(layout="wide", page_title="Analisis de Mercado")
 
 # --- Global variables ---
 player_stats_pd = load_player_stats()
@@ -28,7 +29,7 @@ unique_season = sorted(player_stats_pd['season'].dropna().unique().tolist(), rev
 current_team_players = sorted(current_team_pd['name'].dropna().unique().tolist())
 
 # --- Main page ---
-st.title("Explora las estadisticas de los jugadores de Biwenger")
+st.title("Explora las tendencias de mercado")
 
 # --- Filters ---
 with st.container(border=True):
@@ -55,7 +56,7 @@ with st.container(border=True):
         st.write("###### Escoge las métricas a comparar:")
 
         chart_cols = st.columns([1, 1, 4])
-        chart_metrics = ['points', 'value', 'matches_played', 'average', 'points_per_value']
+        chart_metrics = ['market_purchases_pct', 'market_sales_pct', 'market_usage_pct', 'ratio_purchase_sales', 'value']
         x_metric = chart_cols[0].selectbox("X-axis", chart_metrics, index=0)
         y_metric = chart_cols[1].selectbox("Y-axis", chart_metrics, index=1)
 
@@ -74,44 +75,49 @@ with st.container(border=True):
 
         st.plotly_chart(fig, use_container_width=False, key="main_chart")
 
-    with st.container(border=True):
-        st.subheader("Simula el valor por puntos segun tu coste esperado")
-        st.write("###### Si vas a fichar a un jugador, ¿cuanto te costaria por punto?")
 
-        jugador_a_simular = st.selectbox("Jugador a simular", options=unique_players)
-        jugador_a_simular_text = jugador_a_simular + ' (Simulado)'
+with st.container(border=True):
+    st.subheader("Evolucion del valor de mercado")
+    st.write("###### Escoge jugadores a analizar")
 
-        coste_de_jugador = re.sub(r"[^\d]", "", st.text_input("Coste del jugador (€)", value="€2,500,000"))
-        coste_de_jugador = int(coste_de_jugador) if coste_de_jugador else 0
+    timeseries_filter_cols = st.columns([1, 2])
 
-        player_stats_pd_simulation = (
-            player_stats_pd.copy()
-            .query("player_name == @jugador_a_simular or player_name not in @unique_players")
-            .assign(value = coste_de_jugador,
-                    points_per_value = lambda df: np.round(np.maximum(0, df['points'] / df['value'].replace(0, pd.NA))*100_000, 2),
-                    player_name = jugador_a_simular_text,
-                    )
+    with timeseries_filter_cols[0]:
+        selected_players = st.multiselect(
+            "Selecciona los jugadores",
+            options=unique_players,
         )
 
-        player_stats_pd = pd.concat([player_stats_pd_simulation, player_stats_pd])
+    with timeseries_filter_cols[1]:
+        period_filter = st.radio("Selecciona el numero de dias:",
+                                 options=[7, 14, 30, 365],
+                                 index=3,
+                                 horizontal=True)
 
-        chart_cols_2 = st.columns([1, 1, 4])
-        x_metric = chart_cols_2[0].selectbox("X-axis ", chart_metrics, index=0)
-        y_metric = chart_cols_2[1].selectbox("Y-axis ", chart_metrics, index=len(chart_metrics)-1)
+    market_value_pd = load_market_value(player_names=selected_players)
+    market_value_pd = market_value_pd[market_value_pd['date'] >= (market_value_pd['date'].max() - pd.Timedelta(days=period_filter))]
 
-        fig = render_player_scatter(
-            player_stats_pd,
-            x_metric=x_metric,
-            y_metric=y_metric,
-            position_col="position",
-            player_name_col="player_name",
-            current_team_players=current_team_players,
-            extra_highlight_players=[jugador_a_simular, jugador_a_simular_text],
-            position_colors=POSITION_COLOURS,
-            show_tertiles=True,
-            height=chart_height,
+    if selected_players:
+        fig_ts = render_value_timeseries(
+            df=market_value_pd,
+            title='Evolución del valor de mercado',
+            date_col="date",
+            value_col="market_value_eur",
+            player_col="player_name",
+            height=420,
+            days_back=period_filter,
         )
+        st.plotly_chart(fig_ts, use_container_width=True)
 
-        st.plotly_chart(fig, use_container_width=False, key="simulation_chart")
-
-
+        fig_ts = render_value_timeseries(
+            df=market_value_pd,
+            title='Evolución del cambio diario del valor de mercado',
+            date_col="date",
+            value_col="value_change_1d",
+            player_col="player_name",
+            height=420,
+            days_back=period_filter,
+        )
+        st.plotly_chart(fig_ts, use_container_width=True)
+    else:
+        st.warning("No jugadores seleccionados")
