@@ -160,6 +160,7 @@ def render_value_timeseries(
     players: list[str] | None = None,
     height: int = 420,
     days_back: int = 365,
+    add_vlines: bool = True,
 ) -> go.Figure:
     """
     Minimal time-series: one line per player for 'value' over time.
@@ -217,93 +218,19 @@ def render_value_timeseries(
         legend_title_text="Jugador",
     )
 
-    # add_match_vlines(
-    #     fig,
-    #     d,  # your filtered DF inside render_value_timeseries
-    #     match_date_col="match_date",
-    #     points_col="points",
-    #     player_col=player_col,
-    #     line_dash="dash",
-    #     font_size=10,
-    #     label_spacing_px=12,
-    #     max_labels_per_date=None,  # or a small int if crowded
-    # )
-
-    add_match_overlays_traces(
-        fig, d,
-        player_col=player_col,
-        date_col="match_date",
-        points_col="points",
-        value_col=value_col,
-        line_dash="dash",
-        line_width=1,
-        label_size=10,
-    )
+    if add_vlines:
+        add_match_overlays_traces(
+            fig, d,
+            player_col=player_col,
+            date_col="match_date",
+            points_col="points",
+            value_col=value_col,
+            line_dash="dash",
+            line_width=1,
+            label_size=10,
+        )
 
     return fig
-
-# def add_match_vlines(
-#     fig: go.Figure,
-#     df: pd.DataFrame,
-#     *,
-#     match_date_col: str = "match_date",
-#     points_col: str = "points",
-#     player_col: str = "player_name",   # only to map colors
-#     line_color: str = "lightgrey",
-#     line_dash: str = "dash",
-#     font_size: int = 10,
-#     label_spacing_px: int = 12,
-#     max_labels_per_date: int | None = None,
-#     sort_points: str = "desc",         # "desc" | "asc" | "none"
-# ) -> None:
-#     if match_date_col not in df.columns:
-#         return
-#
-#     # Figure trace colors by player name
-#     trace_color = {}
-#     for tr in fig.data:
-#         name = getattr(tr, "name", None)
-#         if not name:
-#             continue
-#         c = None
-#         if hasattr(tr, "line") and getattr(tr.line, "color", None):
-#             c = tr.line.color
-#         elif hasattr(tr, "marker") and getattr(tr.marker, "color", None):
-#             c = tr.marker.color
-#         if c:
-#             trace_color[name] = c
-#
-#     m = df[[match_date_col, points_col, player_col]].copy()
-#     m[match_date_col] = pd.to_datetime(m[match_date_col], errors="coerce")
-#     m = m.dropna(subset=[match_date_col])
-#
-#     for match_date, grp in m.groupby(match_date_col):
-#         # one vertical line per date
-#         fig.add_vline(x=match_date, line_dash=line_dash, line_color=line_color, layer="below")
-#
-#         rows = grp.dropna(subset=[points_col]).copy()
-#         if sort_points == "desc":
-#             rows = rows.sort_values(points_col, ascending=False)
-#         elif sort_points == "asc":
-#             rows = rows.sort_values(points_col, ascending=True)
-#
-#         if max_labels_per_date is not None:
-#             rows = rows.head(max_labels_per_date)
-#
-#         rows = rows.reset_index(drop=True)  # ensures offset 0..n-1
-#
-#         for offset, r in rows.iterrows():
-#             pts = r[points_col]
-#             player = r[player_col]
-#             color = trace_color.get(str(player), line_color)
-#
-#             fig.add_annotation(
-#                 x=match_date, y=1.0, xref="x", yref="paper",
-#                 text=f"{pts:g}", showarrow=False,
-#                 xanchor="left", yanchor="top",
-#                 xshift=3, yshift=-(label_spacing_px * offset),
-#                 font=dict(size=font_size, color=color),
-#             )
 
 def add_match_overlays_traces(
     fig: go.Figure,

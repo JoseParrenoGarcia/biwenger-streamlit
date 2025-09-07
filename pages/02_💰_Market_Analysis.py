@@ -78,7 +78,7 @@ with st.container(border=True):
     st.subheader("Evolucion del valor de mercado")
     st.write("###### Escoge jugadores a analizar")
 
-    timeseries_filter_cols = st.columns([1, 2])
+    timeseries_filter_cols = st.columns([2, 1.5, 1])
 
     with timeseries_filter_cols[0]:
         selected_players = st.multiselect(
@@ -92,7 +92,9 @@ with st.container(border=True):
                                  index=3,
                                  horizontal=True)
 
-    # market_value_pd = load_market_value(player_names=selected_players)
+    with timeseries_filter_cols[2]:
+        see_vlines_checkbox = st.checkbox("Ver lineas verticales en los graficos", value=True)
+
     market_value_pd = join_data(player_names=selected_players)
     market_value_pd = market_value_pd[market_value_pd['date'] >= (market_value_pd['date'].max() - pd.Timedelta(days=period_filter))]
 
@@ -105,6 +107,7 @@ with st.container(border=True):
             player_col="player_name",
             height=420,
             days_back=period_filter,
+            add_vlines=see_vlines_checkbox
         )
         st.plotly_chart(fig_ts, use_container_width=True)
 
@@ -116,6 +119,7 @@ with st.container(border=True):
             player_col="player_name",
             height=420,
             days_back=period_filter,
+            add_vlines=see_vlines_checkbox
         )
         st.plotly_chart(fig_ts, use_container_width=True)
     else:
