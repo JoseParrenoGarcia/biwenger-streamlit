@@ -4,6 +4,7 @@ from utils import (
     load_player_stats,
     load_market_value,
     load_player_matches,
+    join_data
 )
 
 # --- Page Setup ---
@@ -22,8 +23,6 @@ mbappe_stats = (
                      'average': 'points_per_game'},
             )
 )
-
-
 
 mbappe_value = player_value_pd[player_value_pd['player_name'] == 'Mbappé']
 mbappe_matches = (

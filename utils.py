@@ -174,6 +174,41 @@ def load_market_value(player_names=None) -> pd.DataFrame:
 
     return df.sort_values(["player_name", "date"], ascending=[True, False])
 
+@st.cache_data
+def join_data(player_names=None):
+    player_stats_pd = (
+        load_player_stats()
+        .drop(columns=['season', 'position', 'team', 'status_detail', 'min_value', 'max_value', 'value'])
+        .rename(columns={'points': 'total_points',
+                         'average': 'points_per_game'},
+                )
+    )
+
+    player_matches_pd = (
+        load_player_matches()
+        .drop(columns=['season_label', 'best_xi', 'events', 'team', 'as_of_date'])
+    )
+
+    player_value_pd = load_market_value(player_names=player_names)
+
+    full_data = pd.merge(
+        player_value_pd,
+        player_matches_pd,
+        left_on=['player_name', 'date'],
+        right_on=['player_name', 'match_date'],
+        how='left'
+    )
+
+    full_data = pd.merge(
+        full_data,
+        player_stats_pd,
+        left_on=['player_name', 'date'],
+        right_on=['player_name', 'as_of_date'],
+        how='left',
+    )
+
+    return full_data
+
 # res = supabase.table(player_value_table_name).select("*", count="exact").range(0,0).execute()
 # total = getattr(res, "count", None)
 # print(f"ℹ️ Table '{player_value_table_name}' has approximately {total} rows.")
