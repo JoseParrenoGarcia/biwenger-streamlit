@@ -21,6 +21,10 @@ player_value_table_name = "biwenger_player_value"
 if not check_if_table_exists(supabase, player_value_table_name):
     st.warning(f"⚠️ Table '{player_value_table_name}' does not exist.")
 
+player_matches_table_name = "biwenger_player_matches"
+if not check_if_table_exists(supabase, player_matches_table_name):
+    st.warning(f"⚠️ Table '{player_matches_table_name}' does not exist.")
+
 def fetch_all_rows_from_supabase(
     table_name: str,
     select: str = "*",
@@ -134,6 +138,17 @@ def load_current_team_players() -> pd.DataFrame:
         select="*",
         page_size=5000,
         order_by="name",
+        ascending=True,
+        drop_columns=["id", "created_at"]
+    )
+
+@st.cache_data
+def load_player_matches() -> pd.DataFrame:
+    return fetch_all_rows_from_supabase(
+        table_name=player_matches_table_name,
+        select="*",
+        page_size=5000,
+        order_by="player_name",
         ascending=True,
         drop_columns=["id", "created_at"]
     )
