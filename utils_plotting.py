@@ -1,6 +1,7 @@
 import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
+import numpy as np
 
 
 POSITION_COLOURS = {
@@ -159,6 +160,7 @@ def render_value_timeseries(
     players: list[str] | None = None,
     height: int = 420,
     days_back: int = 365,
+    add_vlines: bool = True,
 ) -> go.Figure:
     """
     Minimal time-series: one line per player for 'value' over time.
@@ -216,4 +218,134 @@ def render_value_timeseries(
         legend_title_text="Jugador",
     )
 
+    if add_vlines:
+        add_match_overlays_traces(
+            fig, d,
+            player_col=player_col,
+            date_col="match_date",
+            points_col="points",
+            value_col=value_col,
+            line_dash="dash",
+            line_width=1,
+            label_size=10,
+        )
+
     return fig
+
+def add_match_overlays_traces(
+    fig: go.Figure,
+    df: pd.DataFrame,
+    *,
+    player_col: str = "player_name",
+    date_col: str = "match_date",
+    points_col: str = "points",
+    value_col: str = "value",     # main y feature used in your timeseries
+    line_dash: str = "dash",
+    line_width: int = 1,
+    label_size: int = 10,
+    stack_gap_frac: float = 0.8,  # vertical gap between stacked labels (as a fraction of pad)
+):
+    """
+    Add vertical match 'lines' and per-player points labels as traces.
+    These traces share legendgroup with the player's main line, so legend clicks
+    toggle them together (requires fig.update_layout(legend_groupclick='togglegroup')).
+    """
+    if date_col not in df.columns:
+        return
+
+    d = df.copy()
+    d[date_col]   = pd.to_datetime(d[date_col], errors="coerce")
+    d[value_col]  = pd.to_numeric(d[value_col], errors="coerce")
+    d[points_col] = pd.to_numeric(d[points_col], errors="coerce")
+    d = d.dropna(subset=[date_col, value_col])
+
+    if d.empty:
+        return
+
+    y_min = float(np.nanmin(d[value_col]))
+    y_max = float(np.nanmax(d[value_col]))
+    pad   = max(1.0, (y_max - y_min) * 0.05)
+
+    # Build a map from player -> color used by their main line trace
+    color_by_player = {}
+    for tr in fig.data:
+        name = getattr(tr, "name", None)
+        if not name:
+            continue
+        col = None
+        if hasattr(tr, "line") and getattr(tr.line, "color", None):
+            col = tr.line.color
+        elif hasattr(tr, "marker") and getattr(tr.marker, "color", None):
+            col = tr.marker.color
+        if col:
+            color_by_player[str(name)] = col
+
+    # Label stacking index per date across ALL players
+    lab = d.dropna(subset=[points_col])[[player_col, date_col, points_col]].copy()
+    if not lab.empty:
+        lab["stack_idx"] = (
+            lab.groupby(date_col)[points_col]
+               .rank(method="first", ascending=False)
+               .astype(int) - 1
+        )
+        max_stack = int(lab["stack_idx"].max())
+        lab["y_label"] = y_max + pad - lab["stack_idx"] * (pad * stack_gap_frac)
+    else:
+        max_stack = -1
+
+    # Per-player vlines + labels as traces
+    for player, grp in d.groupby(player_col):
+        color = color_by_player.get(str(player))
+        if color is None:
+            continue
+
+        # --- vertical line segments (one trace with None separators) ---
+        xs, ys = [], []
+        for dt in sorted(grp[date_col].dropna().unique()):
+            xs.extend([dt, dt, None])
+            ys.extend([y_min, y_max, None])
+        if xs:
+            fig.add_trace(
+                go.Scatter(
+                    x=xs, y=ys, mode="lines",
+                    line=dict(color=color, width=line_width, dash=line_dash),
+                    hoverinfo="skip",
+                    showlegend=False,
+                    legendgroup=str(player),
+                    name=f"{player} matches",
+                )
+            )
+
+        # --- points labels (one text trace per player) ---
+        glab = lab[lab[player_col] == player]
+        if not glab.empty:
+            # format numbers nicely
+            texts = [
+                f"{int(p) if float(p).is_integer() else round(float(p), 2)}"
+                for p in glab[points_col].tolist()
+            ]
+            fig.add_trace(
+                go.Scatter(
+                    x=glab[date_col],
+                    y=glab["y_label"],
+                    mode="text",
+                    text=texts,
+                    textfont=dict(color=color, size=label_size),
+                    textposition="top left",
+                    hoverinfo="skip",
+                    showlegend=False,
+                    legendgroup=str(player),
+                    name=f"{player} pts",
+                )
+            )
+
+    # Extend y-axis to fit stacked labels (if any)
+    if max_stack >= 0:
+        new_ymax = y_max + pad + (pad * stack_gap_frac * max_stack)
+        fig.update_yaxes(range=[y_min, new_ymax])
+
+    # Make legend clicks toggle all traces in a legendgroup
+    fig.update_layout(legend=dict(groupclick="togglegroup"))
+
+
+
