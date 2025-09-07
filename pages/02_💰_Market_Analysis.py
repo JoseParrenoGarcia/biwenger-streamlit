@@ -121,5 +121,3 @@ with st.container(border=True):
         st.plotly_chart(fig_ts, use_container_width=True)
     else:
         st.warning("No jugadores seleccionados")
-
-    st.dataframe(market_value_pd.head())

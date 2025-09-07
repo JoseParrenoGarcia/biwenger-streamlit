@@ -10,6 +10,13 @@ POSITION_COLOURS = {
             "4 - Delantero": "rgb(244, 81, 30)"
         }
 
+POSITION_ORDER = [
+    "1 - Portero",
+    "2 - Defensa",
+    "3 - Centrocampista",
+    "4 - Delantero"
+]
+
 def render_player_scatter(
     df: pd.DataFrame,
     *,
@@ -78,6 +85,7 @@ def render_player_scatter(
         y=y_metric,
         color=position_col,
         color_discrete_map=position_colors,
+        category_orders={position_col: POSITION_ORDER},  # <-- force legend order
         hover_name=player_name_col if player_name_col in df_plot.columns else None,
         hover_data={
             x_metric: True,
@@ -191,6 +199,8 @@ def render_value_timeseries(
         color=player_col,
         height=height,
         markers=markers,
+        category_orders={player_col: POSITION_ORDER},
+        color_discrete_sequence=px.colors.qualitative.G10,
     )
 
     fig.add_hline(y=0, line_dash="dot", line_color="grey")
