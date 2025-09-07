@@ -88,9 +88,13 @@ def load_player_stats() -> pd.DataFrame:
 
     df['as_of_date'] = pd.to_datetime(df['as_of_date'])
 
+    # Sort so newest per player is first, then drop duplicates
+    df = df.sort_values(["player_name", "as_of_date"], ascending=[True, False])
+    df_latest = df.drop_duplicates(subset=["player_name"], keep="first").reset_index(drop=True)
+
     # Your existing enrichments
     return (
-        df.assign(
+        df_latest.assign(
             points_per_value=lambda d: np.round(
                 np.maximum(0, d["points"] / d["value"].replace(0, pd.NA)) * 100_000, 2
             ),
