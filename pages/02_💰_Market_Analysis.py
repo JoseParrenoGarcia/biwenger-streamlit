@@ -93,7 +93,7 @@ with st.container(border=True):
                                  horizontal=True)
 
     with timeseries_filter_cols[2]:
-        see_vlines_checkbox = st.checkbox("Ver lineas verticales en los graficos", value=True)
+        see_vlines_checkbox = st.checkbox("Ver lineas verticales en los graficos", value=False)
 
     market_value_pd = join_data(player_names=selected_players)
     market_value_pd = market_value_pd[market_value_pd['date'] >= (market_value_pd['date'].max() - pd.Timedelta(days=period_filter))]
@@ -122,5 +122,19 @@ with st.container(border=True):
             add_vlines=see_vlines_checkbox
         )
         st.plotly_chart(fig_ts, use_container_width=True)
+
+        fig_ts = render_value_timeseries(
+            df=market_value_pd,
+            title='Evolución del cambio diario del ratio de compra ventas',
+            date_col="date",
+            value_col="ratio_purchase_sales",
+            player_col="player_name",
+            height=420,
+            days_back=period_filter,
+            add_vlines=see_vlines_checkbox
+        )
+        st.plotly_chart(fig_ts, use_container_width=True)
+
+
     else:
         st.warning("No jugadores seleccionados")

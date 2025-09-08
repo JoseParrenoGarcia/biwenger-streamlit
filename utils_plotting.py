@@ -257,12 +257,16 @@ def add_match_overlays_traces(
     d[date_col]   = pd.to_datetime(d[date_col], errors="coerce")
     d[value_col]  = pd.to_numeric(d[value_col], errors="coerce")
     d[points_col] = pd.to_numeric(d[points_col], errors="coerce")
-    d = d.dropna(subset=[date_col, value_col])
+    # d = d.dropna(subset=[date_col, value_col])
 
     if d.empty:
         return
 
     y_min = float(np.nanmin(d[value_col]))
+
+    if value_col != 'value_change_1d':
+        y_min = min(0.0, y_min)
+
     y_max = float(np.nanmax(d[value_col]))
     pad   = max(1.0, (y_max - y_min) * 0.05)
 
@@ -319,19 +323,19 @@ def add_match_overlays_traces(
         # --- points labels (one text trace per player) ---
         glab = lab[lab[player_col] == player]
         if not glab.empty:
-            # format numbers nicely
             texts = [
-                f"{int(p) if float(p).is_integer() else round(float(p), 2)}"
+                "  " + str(int(p) if float(p).is_integer() else round(float(p), 2))
                 for p in glab[points_col].tolist()
             ]
+
             fig.add_trace(
                 go.Scatter(
                     x=glab[date_col],
-                    y=glab["y_label"],
+                    y=glab["y_label"]*0.95,
                     mode="text",
                     text=texts,
                     textfont=dict(color=color, size=label_size),
-                    textposition="top left",
+                    textposition="top right",
                     hoverinfo="skip",
                     showlegend=False,
                     legendgroup=str(player),
@@ -340,9 +344,10 @@ def add_match_overlays_traces(
             )
 
     # Extend y-axis to fit stacked labels (if any)
-    if max_stack >= 0:
+    if max_stack >= 1:
         new_ymax = y_max + pad + (pad * stack_gap_frac * max_stack)
         fig.update_yaxes(range=[y_min, new_ymax])
+
 
     # Make legend clicks toggle all traces in a legendgroup
     fig.update_layout(legend=dict(groupclick="togglegroup"))
