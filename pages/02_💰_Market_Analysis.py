@@ -3,7 +3,6 @@ import pandas as pd
 from utils import (
     load_player_stats,
     load_current_team_players,
-    load_market_value,
     join_data
 )
 from utils_plotting import (
@@ -111,6 +110,8 @@ with st.container(border=True):
         )
         st.plotly_chart(fig_ts, use_container_width=True)
 
+        st.divider()
+
         fig_ts = render_value_timeseries(
             df=market_value_pd,
             title='Evolución del cambio diario del valor de mercado',
@@ -123,6 +124,9 @@ with st.container(border=True):
         )
         st.plotly_chart(fig_ts, use_container_width=True)
 
+        st.divider()
+
+        market_ratio_checkbox = st.checkbox("Ver detalles de compra ventas", value=False)
         fig_ts = render_value_timeseries(
             df=market_value_pd,
             title='Evolución del cambio diario del ratio de compra ventas',
@@ -131,8 +135,12 @@ with st.container(border=True):
             player_col="player_name",
             height=420,
             days_back=period_filter,
-            add_vlines=see_vlines_checkbox
+            add_vlines=see_vlines_checkbox,
+            market_ratio_checkbox=market_ratio_checkbox,
         )
+
+
+
         st.plotly_chart(fig_ts, use_container_width=True)
 
 

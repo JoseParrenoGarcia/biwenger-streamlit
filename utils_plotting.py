@@ -161,6 +161,7 @@ def render_value_timeseries(
     height: int = 420,
     days_back: int = 365,
     add_vlines: bool = True,
+    market_ratio_checkbox: bool = False,
 ) -> go.Figure:
     """
     Minimal time-series: one line per player for 'value' over time.
@@ -194,6 +195,14 @@ def render_value_timeseries(
     else:
         markers = True
 
+    if market_ratio_checkbox:
+        d['text_col'] = np.round(d[value_col], 2).astype(str) + \
+                        " (" + d["market_purchases_pct"].astype(int).astype(str) + \
+                        "% vs " + d["market_sales_pct"].astype(int).astype(str) + "%)"
+        label = 'text_col'
+    else:
+        label = None
+
     fig = px.line(
         d,
         x=date_col,
@@ -203,18 +212,20 @@ def render_value_timeseries(
         markers=markers,
         category_orders={player_col: POSITION_ORDER},
         color_discrete_sequence=px.colors.qualitative.G10,
+        text=label,
     )
 
     fig.add_hline(y=0, line_dash="dot", line_color="grey")
 
     fig.update_traces(
         connectgaps=True,
-        hovertemplate="<b>%{fullData.name}</b><br>Fecha: %{x}<br>Valor: %{y}<extra></extra>"
+        hovertemplate="<b>%{fullData.name}</b><br>Fecha: %{x}<br>Valor: %{y}<extra></extra>",
+        textposition = "top center",
     )
     fig.update_layout(
         title=title + ": " + value_col,
         xaxis_title="Fecha",
-        yaxis_title="Valor",
+        yaxis_title=value_col,
         legend_title_text="Jugador",
     )
 
