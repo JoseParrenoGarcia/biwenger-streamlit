@@ -161,6 +161,7 @@ def render_value_timeseries(
     height: int = 420,
     days_back: int = 365,
     add_vlines: bool = True,
+    market_ratio_checkbox: bool = False,
 ) -> go.Figure:
     """
     Minimal time-series: one line per player for 'value' over time.
@@ -194,6 +195,14 @@ def render_value_timeseries(
     else:
         markers = True
 
+    if market_ratio_checkbox:
+        d['text_col'] = np.round(d[value_col], 2).astype(str) + \
+                        " (" + d["market_purchases_pct"].astype(int).astype(str) + \
+                        "% vs " + d["market_sales_pct"].astype(int).astype(str) + "%)"
+        label = 'text_col'
+    else:
+        label = None
+
     fig = px.line(
         d,
         x=date_col,
@@ -203,18 +212,20 @@ def render_value_timeseries(
         markers=markers,
         category_orders={player_col: POSITION_ORDER},
         color_discrete_sequence=px.colors.qualitative.G10,
+        text=label,
     )
 
     fig.add_hline(y=0, line_dash="dot", line_color="grey")
 
     fig.update_traces(
         connectgaps=True,
-        hovertemplate="<b>%{fullData.name}</b><br>Fecha: %{x}<br>Valor: %{y}<extra></extra>"
+        hovertemplate="<b>%{fullData.name}</b><br>Fecha: %{x}<br>Valor: %{y}<extra></extra>",
+        textposition = "top center",
     )
     fig.update_layout(
         title=title + ": " + value_col,
         xaxis_title="Fecha",
-        yaxis_title="Valor",
+        yaxis_title=value_col,
         legend_title_text="Jugador",
     )
 
@@ -257,12 +268,16 @@ def add_match_overlays_traces(
     d[date_col]   = pd.to_datetime(d[date_col], errors="coerce")
     d[value_col]  = pd.to_numeric(d[value_col], errors="coerce")
     d[points_col] = pd.to_numeric(d[points_col], errors="coerce")
-    d = d.dropna(subset=[date_col, value_col])
+    # d = d.dropna(subset=[date_col, value_col])
 
     if d.empty:
         return
 
     y_min = float(np.nanmin(d[value_col]))
+
+    if value_col != 'value_change_1d':
+        y_min = min(0.0, y_min)
+
     y_max = float(np.nanmax(d[value_col]))
     pad   = max(1.0, (y_max - y_min) * 0.05)
 
@@ -319,19 +334,19 @@ def add_match_overlays_traces(
         # --- points labels (one text trace per player) ---
         glab = lab[lab[player_col] == player]
         if not glab.empty:
-            # format numbers nicely
             texts = [
-                f"{int(p) if float(p).is_integer() else round(float(p), 2)}"
+                "  " + str(int(p) if float(p).is_integer() else round(float(p), 2))
                 for p in glab[points_col].tolist()
             ]
+
             fig.add_trace(
                 go.Scatter(
                     x=glab[date_col],
-                    y=glab["y_label"],
+                    y=glab["y_label"]*0.95,
                     mode="text",
                     text=texts,
                     textfont=dict(color=color, size=label_size),
-                    textposition="top left",
+                    textposition="top right",
                     hoverinfo="skip",
                     showlegend=False,
                     legendgroup=str(player),
@@ -340,9 +355,10 @@ def add_match_overlays_traces(
             )
 
     # Extend y-axis to fit stacked labels (if any)
-    if max_stack >= 0:
+    if max_stack >= 1:
         new_ymax = y_max + pad + (pad * stack_gap_frac * max_stack)
         fig.update_yaxes(range=[y_min, new_ymax])
+
 
     # Make legend clicks toggle all traces in a legendgroup
     fig.update_layout(legend=dict(groupclick="togglegroup"))

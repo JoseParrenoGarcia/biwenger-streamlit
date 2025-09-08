@@ -34,7 +34,6 @@ def fetch_all_rows_from_supabase(
     eq_filters: Optional[Dict[str, Any]] = None,
     in_filters: Optional[Dict[str, Iterable[Any]]] = None,
     drop_columns: Optional[List[str]] = None,
-    cache_buster: int = 1,           # bump this to invalidate st.cache_data
 ) -> pd.DataFrame:
     rows: List[dict] = []
     start = 0
@@ -74,11 +73,11 @@ def fetch_all_rows_from_supabase(
 
 
 @st.cache_data
-def load_player_stats() -> pd.DataFrame:
+def load_player_stats(keep_latest=True) -> pd.DataFrame:
     df = fetch_all_rows_from_supabase(
         table_name=player_stats_table_name,
         select="*",                # or list the exact columns for performance
-        page_size=5000,
+        page_size=1000,
         order_by="player_name",    # optional but helps deterministic paging
         ascending=True,
         drop_columns=["id", "created_at"]
@@ -88,9 +87,12 @@ def load_player_stats() -> pd.DataFrame:
 
     df['as_of_date'] = pd.to_datetime(df['as_of_date'])
 
-    # Sort so newest per player is first, then drop duplicates
-    df = df.sort_values(["player_name", "as_of_date"], ascending=[True, False])
-    df_latest = df.drop_duplicates(subset=["player_name"], keep="first").reset_index(drop=True)
+    if keep_latest:
+        # Sort so newest per player is first, then drop duplicates
+        df = df.sort_values(["player_name", "as_of_date"], ascending=[True, False])
+        df_latest = df.drop_duplicates(subset=["player_name"], keep="first").reset_index(drop=True)
+    else:
+        df_latest = df
 
     # Your existing enrichments
     return (
@@ -115,7 +117,7 @@ def load_current_team_players() -> pd.DataFrame:
     return fetch_all_rows_from_supabase(
         table_name=current_team_table_name,
         select="*",
-        page_size=5000,
+        page_size=1000,
         order_by="name",
         ascending=True,
         drop_columns=["id", "created_at"]
@@ -126,7 +128,7 @@ def load_player_matches() -> pd.DataFrame:
     df = fetch_all_rows_from_supabase(
         table_name=player_matches_table_name,
         select="*",
-        page_size=5000,
+        page_size=1000,
         order_by="player_name",
         ascending=True,
         drop_columns=["id", "created_at"]
@@ -177,7 +179,7 @@ def load_market_value(player_names=None) -> pd.DataFrame:
 @st.cache_data
 def join_data(player_names=None):
     player_stats_pd = (
-        load_player_stats()
+        load_player_stats(keep_latest=False)
         .drop(columns=['season', 'position', 'team', 'status_detail', 'min_value', 'max_value', 'value'])
         .rename(columns={'points': 'total_points',
                          'average': 'points_per_game'},
