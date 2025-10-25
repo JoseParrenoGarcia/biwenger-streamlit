@@ -96,9 +96,11 @@ def load_player_stats(keep_latest=True) -> pd.DataFrame:
 
     # Your existing enrichments
     return (
-        df_latest.assign(
+        df_latest
+        .fillna(0)
+        .assign(
             points_per_value=lambda d: np.round(
-                np.maximum(0, d["points"] / d["value"].replace(0, pd.NA)) * 100_000, 2
+                (d["points"].where(d["points"] != 0) / d["value"].where(d["value"] != 0)) * 100_000, 2
             ),
             ratio_purchase_sales=lambda d: np.round(
                 np.maximum(
